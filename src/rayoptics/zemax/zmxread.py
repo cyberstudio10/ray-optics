@@ -589,8 +589,20 @@ class ZmxGlassHandler(GlassHandlerBase):
                     self.track_contents['6 digit code'] += 1
                     return True
             else:  # must be a glass type
-                medium = self.find_glass(name, self.glass_catalogs)
-                g.medium = medium
+                medium = self.find_glass(name, self.glass_catalogs, always=False)
+                if medium is None:
+                    nd = float(inputs[3])
+                    vd = float(inputs[4])
+                    if vd == 0:
+                        if nd == 0:
+                            g.medium = om.ConstantIndex(1.5, 'not '+name)
+                        else:
+                            # Zemax treats Vd=0 as constant index
+                            g.medium = om.ConstantIndex(nd, f"n:{nd:.3f}")
+                    else:
+                        g.medium = mg.ModelGlass(nd, vd, om.glass_encode(nd, vd))
+                else:
+                    g.medium = medium
                 return True
 
         else:
