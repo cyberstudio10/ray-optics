@@ -300,7 +300,7 @@ def handle_types_and_params(optm, cur, cmd, inputs):
         # useful to remember the Type of Zemax surface
         ifc.z_type = typ
         _track_contents[typ] += 1
-        if typ == 'EVENASPH':
+        if typ == 'EVENASPH' or typ == 'XASPHERE':
             cur_profile = ifc.profile
             new_profile = profiles.mutate_profile(cur_profile,
                                                   'EvenPolynomial')
@@ -358,7 +358,7 @@ def handle_types_and_params(optm, cur, cmd, inputs):
                 ifc.phase_element.grating_freq_um = param_val
             elif i == 2:
                 ifc.phase_element.order = param_val
-        elif ifc.z_type == 'EVENASPH':
+        elif ifc.z_type == 'EVENASPH' or ifc.z_type == 'XASPHERE':
             ifc.profile.coefs[i-1] = param_val
         elif ifc.z_type == 'PARAXIAL':
             if i == 1:
