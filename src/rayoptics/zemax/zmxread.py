@@ -300,7 +300,7 @@ def handle_types_and_params(optm, cur, cmd, inputs):
         # useful to remember the Type of Zemax surface
         ifc.z_type = typ
         _track_contents[typ] += 1
-        if typ == 'EVENASPH' or typ == 'XASPHERE':
+        if typ == 'EVENASPH':
             cur_profile = ifc.profile
             new_profile = profiles.mutate_profile(cur_profile,
                                                   'EvenPolynomial')
@@ -310,7 +310,7 @@ def handle_types_and_params(optm, cur, cmd, inputs):
             new_profile = profiles.mutate_profile(cur_profile,
                                                   'YToroid')
             ifc.profile = new_profile
-        elif typ == 'XOSPHERE':
+        elif typ == 'XOSPHERE' or typ == 'XASPHERE':
             cur_profile = ifc.profile
             new_profile = profiles.mutate_profile(cur_profile,
                                                   'RadialPolynomial')
@@ -358,8 +358,12 @@ def handle_types_and_params(optm, cur, cmd, inputs):
                 ifc.phase_element.grating_freq_um = param_val
             elif i == 2:
                 ifc.phase_element.order = param_val
-        elif ifc.z_type == 'EVENASPH' or ifc.z_type == 'XASPHERE':
+        elif ifc.z_type == 'EVENASPH':
             ifc.profile.coefs[i-1] = param_val
+        elif ifc.z_type == 'XASPHERE':
+            if i * 2 > len(ifc.profile.coefs):
+                ifc.profile.coefs.extend([0.0] * (i * 2 - len(ifc.profile.coefs)))
+            ifc.profile.coefs[i * 2 - 1] = param_val
         elif ifc.z_type == 'PARAXIAL':
             if i == 1:
                 ifc.optical_power = 1/param_val
@@ -373,7 +377,7 @@ def handle_types_and_params(optm, cur, cmd, inputs):
         inputs = inputs.split()
         i = int(inputs[0])
         param_val = float(inputs[1])
-        if ifc.z_type == 'XOSPHERE':
+        if ifc.z_type == 'XOSPHERE' or ifc.z_type == 'XASPHERE':
             if i == 1:
                 num_terms = param_val
                 ifc.profile.coefs = []
