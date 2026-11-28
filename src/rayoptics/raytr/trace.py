@@ -319,8 +319,11 @@ def iterate_ray(opt_model, ifcx, xy_target, fld, wvl, **kwargs):
     If the iteration fails, a TraceError will be raised
     """
     rr = None
+    # (miss, aim, rr) of the iterate closest to xy_target whose ray reached
+    # ifcx: used if the solver raises because a later trial ray fails
+    best = None
     def y_stop_coordinate(y1, *args):
-        nonlocal rr
+        nonlocal rr, best
         seq_model, ifcx, pt0, obj2enp_dist, wvl, y_target, not_wa = args
         pt1 = np.array([0., y1, obj2enp_dist])
         dir0 = normalize(pt1 - pt0)
@@ -351,10 +354,13 @@ def iterate_ray(opt_model, ifcx, xy_target, fld, wvl, **kwargs):
             final_coord = ray_pkg.ray[ifcx][mc.p]
 
         y_ray = final_coord[1]
+        miss = abs(y_ray - y_target)
+        if best is None or miss < best[0]:
+            best = (miss, y1, rr)
         return y_ray - y_target
 
     def surface_coordinate(coord, *args):
-        nonlocal rr
+        nonlocal rr, best
         seq_model, ifcx, pt0, dist, wvl, target, not_wa = args
         pt1 = np.array([coord[0], coord[1], dist])
         dir0 = normalize(pt1 - pt0)
@@ -377,6 +383,9 @@ def iterate_ray(opt_model, ifcx, xy_target, fld, wvl, **kwargs):
             rr = RayResult(ray_pkg, None)
             final_coord = ray_pkg.ray[ifcx][mc.p]
         xy_ray = np.array([final_coord[0], final_coord[1]])
+        miss = np.linalg.norm(xy_ray - target)
+        if best is None or miss < best[0]:
+            best = (miss, np.array(coord, dtype=float), rr)
         return xy_ray - target
 
     seq_model = opt_model['seq_model']
@@ -404,7 +413,13 @@ def iterate_ray(opt_model, ifcx, xy_target, fld, wvl, **kwargs):
                     # print(rte)
                     start_y = results.root
                 except TraceError:
-                    start_y = 0.0
+                    # A trial ray failed, e.g. the secant step after
+                    # convergence, computed from residuals that are both
+                    # rounding noise, can be huge. Keep the best iterate.
+                    if best is None:
+                        start_y = 0.0
+                    else:
+                        _, start_y, rr = best
                 start_coords = np.array([0., start_y])
             else:
                 # do 2D iteration. epsfcn is a parameter increment,
@@ -417,7 +432,10 @@ def iterate_ray(opt_model, ifcx, xy_target, fld, wvl, **kwargs):
                                                 obj2enp_dist, wvl, 
                                                 xy_target, not_wa))
                 except TraceError:
-                    start_coords = np.array([0., 0.])
+                    if best is None:
+                        start_coords = np.array([0., 0.])
+                    else:
+                        _, start_coords, rr = best
         else:  # floating stop surface - use entrance pupil for aiming
             start_coords = np.array([0., 0.]) + xy_target
 
@@ -889,8 +907,11 @@ def iterate_ray_raw(pthlist, ifcx, xy_target, pt0, d0,
     If the iteration fails, a TraceError will be raised
     """
     rr = None
+    # (miss, aim, rr) of the iterate closest to xy_target whose ray reached
+    # ifcx: used if the solver raises because a later trial ray fails
+    best = None
     def y_stop_coordinate(y1, *args):
-        nonlocal rr
+        nonlocal rr, best
         pthlist, ifcx, pt0, obj2pup_dist, wvl, y_target, not_wa = args
         pt1 = np.array([0., y1, obj2pup_dist])
         dir0 = normalize(pt1 - pt0)
@@ -918,10 +939,13 @@ def iterate_ray_raw(pthlist, ifcx, xy_target, pt0, d0,
             final_coord = ray_pkg.ray[ifcx][mc.p]
 
         y_ray = final_coord[1]
+        miss = abs(y_ray - y_target)
+        if best is None or miss < best[0]:
+            best = (miss, y1, rr)
         return y_ray - y_target
 
     def surface_coordinate(coord, *args):
-        nonlocal rr
+        nonlocal rr, best
         pthlist, ifcx, pt0, dist, wvl, target, not_wa = args
         pt1 = np.array([coord[0], coord[1], dist])
         dir0 = normalize(pt1 - pt0)
@@ -944,6 +968,9 @@ def iterate_ray_raw(pthlist, ifcx, xy_target, pt0, d0,
             rr = RayResult(ray_pkg, None)
             final_coord = ray_pkg.ray[ifcx][mc.p]
         xy_ray = np.array([final_coord[0], final_coord[1]])
+        miss = np.linalg.norm(xy_ray - target)
+        if best is None or miss < best[0]:
+            best = (miss, np.array(coord, dtype=float), rr)
         return xy_ray - target
 
     with warnings.catch_warnings():
@@ -963,7 +990,13 @@ def iterate_ray_raw(pthlist, ifcx, xy_target, pt0, d0,
                     # print(rte)
                     start_y = results.root
                 except TraceError:
-                    start_y = 0.0
+                    # A trial ray failed, e.g. the secant step after
+                    # convergence, computed from residuals that are both
+                    # rounding noise, can be huge. Keep the best iterate.
+                    if best is None:
+                        start_y = 0.0
+                    else:
+                        _, start_y, rr = best
                 start_coords = np.array([0., start_y])
             else:
                 # do 2D iteration. epsfcn is a parameter increment,
@@ -976,7 +1009,10 @@ def iterate_ray_raw(pthlist, ifcx, xy_target, pt0, d0,
                                                 obj2pup_dist, wvl, 
                                                 xy_target, not_wa))
                 except TraceError:
-                    start_coords = np.array([0., 0.])
+                    if best is None:
+                        start_coords = np.array([0., 0.])
+                    else:
+                        _, start_coords, rr = best
         else:  # floating stop surface - use entrance pupil for aiming
             start_coords = np.array([0., 0.]) + xy_target
 
